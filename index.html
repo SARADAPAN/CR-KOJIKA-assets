@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CR KOJIKA Browser Prototype</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="machine-layout">
+      <div class="machine-stage">
+        <div class="machine-viewport">
+          <video id="stageVideo" class="stage-video" muted playsinline loop autoplay preload="metadata"></video>
+          <video id="fxVideoOverlay" class="fx-video-overlay" muted playsinline preload="none"></video>
+          <div class="stage-scrim"></div>
+          <div id="freezeBlackout" class="freeze-blackout" aria-hidden="true"></div>
+          <div id="rushIntro" class="rush-intro" aria-hidden="true">
+            <img class="rush-intro-frame" src="./01_画像/演出/img_shutter_frame_02.png" alt="">
+            <img id="rushIntroShutter" class="rush-intro-shutter" src="./01_画像/演出/img_shutter_plate_01.png" alt="">
+            <img id="rushIntroLogo" class="rush-intro-logo" src="./01_画像/演出/img_logo_kojika_musou_rush_01.png" alt="">
+            <img id="rushIntroCount" class="rush-intro-count" src="./01_画像/数字/15回転.png" alt="">
+          </div>
+        </div>
+
+        <img class="machine-frame" src="./01_画像/フレーム/img_frame_kojika_01.png" alt="CR KOJIKA frame">
+
+        <div id="pachinkoField" class="pachinko-field" aria-hidden="true">
+          <div id="pachinkoNails" class="pachinko-nails"></div>
+          <div id="pachinkoGate" class="pachinko-gate"></div>
+          <div id="gateStockLamps" class="gate-stock-lamps" aria-hidden="true">
+            <span class="gate-stock-lamp"></span>
+            <span class="gate-stock-lamp"></span>
+            <span class="gate-stock-lamp"></span>
+            <span class="gate-stock-lamp"></span>
+            <span class="gate-stock-lamp"></span>
+          </div>
+          <div id="pachinkoBalls" class="pachinko-balls"></div>
+        </div>
+
+        <div class="reel-board" aria-label="数字表示">
+          <div class="reel-window"><img id="reel0" class="reel-symbol" src="./01_画像/数字/1.png" alt="左リール"></div>
+          <div class="reel-window"><img id="reel1" class="reel-symbol" src="./01_画像/数字/2.png" alt="中央リール"></div>
+          <div class="reel-window"><img id="reel2" class="reel-symbol" src="./01_画像/数字/3.png" alt="右リール"></div>
+        </div>
+        <div id="fallingCompactDisplay" class="falling-compact-display" aria-hidden="true">
+          <img id="fallingCompact0" class="falling-compact-symbol" src="./01_画像/数字/1.png" alt="">
+          <img id="fallingCompact1" class="falling-compact-symbol" src="./01_画像/数字/2.png" alt="">
+          <img id="fallingCompact2" class="falling-compact-symbol" src="./01_画像/数字/3.png" alt="">
+        </div>
+        <img id="fallingImageOverlay" class="falling-image-overlay" src="./01_画像/演出/img_falling_kojika_01.png" alt="">
+
+        <div class="hero-overlay">
+          <p class="eyebrow">Browser Prototype</p>
+          <h1>CR KOJIKA</h1>
+          <p class="lead">
+            フレーム中央の透過動画と数字変動、RUSH、確変、落ち物演出をブラウザ上で確認するための試作表示です。
+          </p>
+        </div>
+
+        <div class="machine-stats">
+          <div>
+            <span class="stats-label">回転数</span>
+            <strong id="spinCount">0</strong>
+          </div>
+          <div>
+            <span class="stats-label">当たり</span>
+            <strong id="hitCount">0</strong>
+          </div>
+          <div>
+            <span class="stats-label">天井まで</span>
+            <strong id="ceilingCount">101</strong>
+          </div>
+        </div>
+
+        <div class="status-strip overlay-status">
+          <div>
+            <span class="status-label">状態</span>
+            <strong id="machineMode">STANDBY</strong>
+          </div>
+          <div>
+            <span class="status-label">持ち玉</span>
+            <strong id="ballCount">2500</strong>
+          </div>
+          <div>
+            <span class="status-label">連チャン</span>
+            <strong id="chainCount">0</strong>
+          </div>
+        </div>
+
+        <div class="fx-badge" id="fxBadge">NORMAL</div>
+        <img id="kakuhenBadge" class="kakuhen-badge" src="./01_画像/演出/img_logo_kakuhen_01.png" alt="KAKUHEN">
+        <img id="timeLogo" class="time-logo" src="./01_画像/演出/img_logo_kojika_time_01.png" alt="KOJIKA TIME">
+        <img id="rushLogo" class="rush-logo" src="./01_画像/演出/img_logo_kojika_musou_rush_01.png" alt="KOJIKA無双RUSH">
+        <button id="pushLeverBtn" class="push-lever" type="button" aria-label="押せボタン">
+          <img id="pushLeverImage" src="./01_画像/演出/img_lever_01.png" alt="">
+        </button>
+        <div id="machineSparkle" class="machine-sparkle" aria-hidden="true">
+          <span class="machine-sparkle-beam beam-a"></span>
+          <span class="machine-sparkle-beam beam-b"></span>
+          <span class="machine-sparkle-beam beam-c"></span>
+          <span class="machine-sparkle-beam beam-d"></span>
+        </div>
+        <div id="forecastOverlay" class="forecast-overlay" aria-hidden="true">
+          <div class="forecast-core">
+            <div class="forecast-kicker">KOJIKA ALERT</div>
+            <div id="forecastText" class="forecast-text">CHANCE</div>
+            <div id="forecastSubtext" class="forecast-subtext">演出発生</div>
+          </div>
+        </div>
+        <div id="fallingItems" class="falling-items" aria-hidden="true"></div>
+        <div class="jackpot-flash" id="jackpotFlash" aria-hidden="true"></div>
+      </div>
+
+      <aside class="control-panel">
+        <div class="panel-card">
+          <h2>操作</h2>
+          <button id="enableAudioBtn" class="primary ghost">音声を有効化</button>
+          <button id="spinBtn" class="primary">スタート</button>
+          <button id="addBallsBtn" class="secondary">玉追加（2500玉）</button>
+          <button id="autoBtn" class="secondary">オート 100回</button>
+          <button id="stopAutoBtn" class="secondary">オート停止</button>
+          <button id="debugFreezeBtn" class="secondary">フリーズデバッグ</button>
+          <button id="debugFeverBtn" class="secondary">確変デバッグ</button>
+          <button id="debugRushBtn" class="secondary">RUSH確定デバッグ</button>
+          <button id="debugForecastBtn" class="secondary">予告デバッグ</button>
+          <button id="debugFallingBtn" class="secondary">落ち物デバッグ</button>
+          <button id="debugEvenFlowBtn" class="secondary">偶数当たり分岐デバッグ</button>
+          <button id="debugSparkleBtn" class="secondary">ピカピカデバッグ</button>
+          <button id="resetBtn" class="secondary alt">リセット</button>
+        </div>
+
+        <div class="panel-card">
+          <h2>演出ログ</h2>
+          <p id="announcement" class="announcement">待機中です。音声を有効化するとBGMとSEも確認できます。</p>
+          <ul id="history" class="history"></ul>
+        </div>
+
+        <div class="panel-card">
+          <h2>現在の仕様</h2>
+          <ul class="rules">
+            <li>`01_画像/フレーム/img_frame_kojika_01.png` を筐体表示に使用</li>
+            <li>背景動画は中央の透過窓内に表示</li>
+            <li>数字図柄はランダム抽選で停止演出</li>
+            <li>通常時は奇数当たりで5回転の確変チャレンジ</li>
+            <li>通常時は `1/36` で10回転のチャンスタイムへ移行</li>
+            <li>チャンスタイム中は `1/63.8` の合算抽選</li>
+            <li>確変チャレンジは5回転の試行で、成功時は `80%` で確変移行</li>
+            <li>確変チャレンジ中は `30%` で KOJIKA無双RUSH に突入</li>
+            <li>KOJIKA無双RUSH は `15回転 40% / 30回転 40% / 60回転 20%`</li>
+            <li>確変中は `1/59.8`、奇数70%・偶数30%</li>
+            <li>ハズレ100回後の101回転目は大当たり確定</li>
+            <li>偶数当たりは +500玉、奇数当たりは +1500玉</li>
+            <li>落ち物演出は偶数当たりから発生</li>
+            <li>KOJIKA無双RUSH 中は偶数当たりでも残り回転まで継続し、終了後に確変チャレンジへ戻る</li>
+            <li>通常時の常時音には `パチンコ玉排出音.mp3` を使用</li>
+            <li>連チャン大当たり中は `大当たりBGM.mp3` と `大当たりBGM2.mp3` をランダム再生</li>
+          </ul>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
