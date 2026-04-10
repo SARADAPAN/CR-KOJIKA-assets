@@ -96,19 +96,22 @@ const REEL_REACH_EXTRA_STOP_MS = 1000;
 const FALLING_TRIGGER_RATE = 0.1;
 const FALLING_SUCCESS_RATE = 0.5;
 const BALL_LAUNCH_INTERVAL_MS = 650;
-const BALL_START_POSITION = { x: 0.165, y: 0.79 };
-const BALL_WALL_CONTROL_POSITION = { x: 0.19, y: 0.3 };
-const BALL_TOP_CONTROL_POSITION = { x: 0.31, y: 0.1 };
-const BALL_LAUNCH_DURATION_MS = 1150;
-const BALL_LAUNCH_DURATION_VARIANCE_MS = 180;
-const BALL_RELEASE_X_RANGE = { min: 0.43, max: 0.58 };
-const BALL_RELEASE_Y_RANGE = { min: 0.16, max: 0.24 };
+const BALL_START_POSITION = { x: 0.086, y: 0.94 };
+const BALL_WALL_CONTROL_POSITION = { x: 0.078, y: 0.5 };
+const BALL_TOP_CONTROL_POSITION = { x: 0.125, y: 0.07 };
+const BALL_LAUNCH_DURATION_MS = 1620;
+const BALL_LAUNCH_DURATION_VARIANCE_MS = 70;
+const BALL_RELEASE_X_RANGE = { min: 0.49, max: 0.51 };
+const BALL_RELEASE_Y_RANGE = { min: 0.175, max: 0.205 };
+const BALL_APEX_BRANCH_VX = 0.11;
+const BALL_APEX_BRANCH_VX_VARIANCE = 0.028;
+const BALL_APEX_DROP_VY = 0.032;
 const BALL_INITIAL_FALL_VELOCITY = { x: 0.01, y: 0.085 };
 const BALL_GRAVITY = 1.3;
 const BALL_RADIUS = 0.009;
 const BALL_NAIL_COLLISION_Y_RANGE = 0.035;
 const BALL_FUNNEL_CENTER_X = 0.5;
-const BALL_FUNNEL_ENTRY_Y = 0.74;
+const BALL_FUNNEL_ENTRY_Y = 0.82;
 const BALL_FUNNEL_PULL = 1.18;
 const MAX_PENDING_GATE_SPINS = 4;
 const rushCountImagePaths = {
@@ -204,17 +207,47 @@ const leverImagePaths = [
 
 const effectTimeouts = new Set();
 
-const pachinkoNailLayout = [
-  { x: 0.47, y: 0.18 }, { x: 0.53, y: 0.17 }, { x: 0.58, y: 0.19 }, { x: 0.62, y: 0.21 },
-  { x: 0.36, y: 0.26 }, { x: 0.45, y: 0.24 }, { x: 0.54, y: 0.25 }, { x: 0.63, y: 0.27 },
-  { x: 0.34, y: 0.29 }, { x: 0.5, y: 0.29 }, { x: 0.67, y: 0.3 },
-  { x: 0.31, y: 0.34 }, { x: 0.4, y: 0.33 }, { x: 0.49, y: 0.35 }, { x: 0.58, y: 0.34 }, { x: 0.67, y: 0.36 },
-  { x: 0.35, y: 0.39 }, { x: 0.44, y: 0.39 }, { x: 0.53, y: 0.4 }, { x: 0.62, y: 0.39 }, { x: 0.71, y: 0.4 },
-  { x: 0.29, y: 0.43 }, { x: 0.38, y: 0.43 }, { x: 0.47, y: 0.44 }, { x: 0.56, y: 0.43 }, { x: 0.65, y: 0.44 },
-  { x: 0.33, y: 0.52 }, { x: 0.42, y: 0.52 }, { x: 0.6, y: 0.52 }, { x: 0.69, y: 0.52 },
-  { x: 0.35, y: 0.61 }, { x: 0.43, y: 0.62 }, { x: 0.48, y: 0.65 }, { x: 0.58, y: 0.65 }, { x: 0.66, y: 0.61 },
-  { x: 0.38, y: 0.71 }, { x: 0.45, y: 0.745 }, { x: 0.59, y: 0.745 }, { x: 0.66, y: 0.71 },
-];
+function buildMirroredNailLayout(leftSide, center = []) {
+  const mirrored = leftSide
+    .slice()
+    .reverse()
+    .map((nail) => ({ x: Number((1 - nail.x).toFixed(3)), y: nail.y }));
+  return [...leftSide, ...center, ...mirrored];
+}
+
+const pachinkoNailLayout = buildMirroredNailLayout(
+  [
+    { x: 0.398, y: 0.178 },
+    { x: 0.378, y: 0.188 },
+    { x: 0.358, y: 0.198 },
+    { x: 0.338, y: 0.212 },
+    { x: 0.319, y: 0.228 },
+    { x: 0.301, y: 0.246 },
+    { x: 0.284, y: 0.266 },
+    { x: 0.268, y: 0.288 },
+    { x: 0.252, y: 0.312 },
+    { x: 0.148, y: 0.564 },
+    { x: 0.162, y: 0.603 },
+    { x: 0.175, y: 0.637 },
+    { x: 0.218, y: 0.744 },
+    { x: 0.242, y: 0.768 },
+    { x: 0.268, y: 0.792 },
+    { x: 0.292, y: 0.812 },
+    { x: 0.316, y: 0.834 },
+    { x: 0.34, y: 0.854 },
+    { x: 0.36, y: 0.876 },
+    { x: 0.39, y: 0.902 },
+    { x: 0.43, y: 0.944 },
+  ],
+  [
+    { x: 0.432, y: 0.16 },
+    { x: 0.454, y: 0.153 },
+    { x: 0.477, y: 0.147 },
+    { x: 0.5, y: 0.144 },
+    { x: 0.468, y: 0.95 },
+    { x: 0.5, y: 0.972 },
+  ],
+);
 
 const pachinkoBallsState = [];
 let ballLauncherTimer = null;
@@ -223,27 +256,34 @@ let lastPachinkoFrameAt = 0;
 const pachinkoGateRect = {
   left: 0.466,
   right: 0.534,
-  top: 0.792,
-  bottom: 0.884,
+  top: 0.885,
+  bottom: 0.978,
 };
 
 const pachinkoWallSegments = {
   left: [
-    { y: 0.0, x: 0.19 },
-    { y: 0.64, x: 0.19 },
-    { y: 0.76, x: 0.23 },
-    { y: 0.84, x: 0.34 },
-    { y: 0.9, x: 0.44 },
-    { y: 0.95, x: 0.482 },
+    { y: 0.0, x: 0.275 },
+    { y: 0.16, x: 0.275 },
+    { y: 0.2, x: 0.225 },
+    { y: 0.28, x: 0.165 },
+    { y: 0.42, x: 0.11 },
+    { y: 0.78, x: 0.095 },
+    { y: 0.84, x: 0.12 },
+    { y: 0.89, x: 0.225 },
+    { y: 0.94, x: 0.375 },
+    { y: 0.985, x: 0.468 },
   ],
   right: [
-    { y: 0.0, x: 0.81 },
-    { y: 0.3, x: 0.81 },
-    { y: 0.64, x: 0.81 },
-    { y: 0.76, x: 0.77 },
-    { y: 0.84, x: 0.66 },
-    { y: 0.9, x: 0.56 },
-    { y: 0.95, x: 0.518 },
+    { y: 0.0, x: 0.725 },
+    { y: 0.16, x: 0.725 },
+    { y: 0.2, x: 0.775 },
+    { y: 0.28, x: 0.835 },
+    { y: 0.42, x: 0.89 },
+    { y: 0.78, x: 0.905 },
+    { y: 0.84, x: 0.88 },
+    { y: 0.89, x: 0.775 },
+    { y: 0.94, x: 0.625 },
+    { y: 0.985, x: 0.532 },
   ],
 };
 
@@ -524,23 +564,11 @@ function tickPachinkoField(now) {
       );
 
       if (progress >= 1) {
-        const tangentX = cubicBezierDerivative(
-          BALL_START_POSITION.x,
-          ball.launchControl1.x,
-          ball.launchControl2.x,
-          ball.launchEnd.x,
-          1,
-        );
-        const tangentY = cubicBezierDerivative(
-          BALL_START_POSITION.y,
-          ball.launchControl1.y,
-          ball.launchControl2.y,
-          ball.launchEnd.y,
-          1,
-        );
+        const branchDirection = Math.random() < 0.5 ? -1 : 1;
+        const branchSpeedX = BALL_APEX_BRANCH_VX + ((Math.random() - 0.5) * BALL_APEX_BRANCH_VX_VARIANCE);
         ball.phase = "fall";
-        ball.vx = (tangentX * 0.22) + BALL_INITIAL_FALL_VELOCITY.x + (ball.drift * 1.2);
-        ball.vy = Math.max(BALL_INITIAL_FALL_VELOCITY.y, Math.abs(tangentY) * 0.16);
+        ball.vx = (branchDirection * branchSpeedX) + (ball.drift * 0.35);
+        ball.vy = BALL_APEX_DROP_VY + (Math.random() * 0.018);
       }
       updateBallElement(ball);
       return;
@@ -571,11 +599,12 @@ function tickPachinkoField(now) {
       if (distanceSq > 0 && distanceSq < minDistance * minDistance) {
         const distance = Math.sqrt(distanceSq);
         const nx = dx / distance;
-        const scatterStrength = nail.y < 0.33 ? 0.28 : 0.18;
+        const scatterStrength = nail.y < 0.33 ? 0.34 : 0.18;
+        const horizontalKick = nail.y < 0.33 ? 0.34 : 0.22;
         const scatter = (Math.random() - 0.5) * scatterStrength;
         ball.x = nail.x + (nx * minDistance);
         ball.y = nail.y + ((dy / distance) * minDistance);
-        ball.vx = (nx * (nail.y < 0.33 ? 0.28 : 0.22)) + scatter;
+        ball.vx = (nx * horizontalKick) + scatter;
         ball.vy = Math.abs(ball.vy) * 0.62 + 0.12;
       }
     });
