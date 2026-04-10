@@ -144,7 +144,7 @@ body::after {
 .pachinko-field {
   position: absolute;
   inset: 0;
-  z-index: 3;
+  z-index: 7;
   pointer-events: none;
 }
 
@@ -239,17 +239,17 @@ body::after {
 
 .machine-viewport {
   position: absolute;
-  left: 23.6%;
-  top: 8.8%;
-  width: 52.8%;
-  height: 78.8%;
+  left: 23.2%;
+  top: 11.2%;
+  width: 53.8%;
+  height: 80.2%;
   overflow: hidden;
-  clip-path: ellipse(44% 47% at 50% 50%);
+  clip-path: ellipse(48.8% 48.6% at 50% 50%);
   background: #090507;
   box-shadow:
     inset 0 0 50px rgba(0, 0, 0, 0.55),
     0 0 22px rgba(255, 190, 80, 0.12);
-  z-index: 1;
+  z-index: 2;
 }
 
 .stage-video,
@@ -264,6 +264,7 @@ body::after {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center 40%;
   filter: saturate(1.1) contrast(1.08);
 }
 
@@ -271,6 +272,7 @@ body::after {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center 40%;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.45s ease;
@@ -285,16 +287,16 @@ body::after {
   --falling-overlay-shift-y: -20%;
   --falling-overlay-base-top: 8.8%;
   --falling-overlay-suspense-top: 16%;
-  --falling-overlay-red-line-y: -33%;
-  --falling-overlay-between-upper-y: -6%;
-  --falling-overlay-between-lower-y: 8%;
+  --falling-overlay-red-line-y: -48%;
+  --falling-overlay-between-upper-y: -30%;
+  --falling-overlay-between-lower-y: -22%;
   --falling-overlay-purple-line-y: 18%;
   position: absolute;
   left: 50%;
   top: var(--falling-overlay-base-top);
   width: 52.8%;
   height: 78.8%;
-  clip-path: ellipse(44% 47% at 50% 50%);
+  clip-path: ellipse(48.8% 48.6% at 50% 50%);
   object-fit: contain;
   object-position: center top;
   opacity: 0;
@@ -310,7 +312,9 @@ body::after {
 .falling-image-overlay.active.suspense {
   top: var(--falling-overlay-suspense-top);
   opacity: 1;
-  animation: fallingSuspense 10s cubic-bezier(0.18, 0.84, 0.18, 1) forwards;
+  animation:
+    fallingSuspenseIntro 0.7s cubic-bezier(0.18, 0.84, 0.18, 1) forwards,
+    fallingSuspenseLoop 2.9s cubic-bezier(0.24, 0.82, 0.2, 1) 0.7s infinite;
 }
 
 .falling-image-overlay.active.success {
@@ -325,6 +329,11 @@ body::after {
   filter:
     drop-shadow(0 0 42px rgba(255, 214, 107, 0.7))
     drop-shadow(0 0 108px rgba(255, 62, 50, 0.38));
+}
+
+.falling-image-overlay.active.success-fade {
+  z-index: 5;
+  animation: fallingOverlayFadeOut 0.55s ease forwards;
 }
 
 .stage-scrim {
@@ -488,9 +497,6 @@ body::after {
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   padding: 10px 12px;
-  border-radius: 18px;
-  background: linear-gradient(180deg, rgba(18, 14, 22, 0.28), rgba(18, 14, 22, 0.14));
-  border: 1px solid rgba(255, 214, 107, 0.24);
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, -50%) scale(0.76);
@@ -889,6 +895,12 @@ body::after {
   opacity: 1;
 }
 
+.forecast-overlay.no-copy .forecast-kicker,
+.forecast-overlay.no-copy .forecast-text,
+.forecast-overlay.no-copy .forecast-subtext {
+  display: none;
+}
+
 .forecast-core {
   min-width: min(62%, 420px);
   padding: 18px 30px 20px;
@@ -901,6 +913,14 @@ body::after {
   box-shadow:
     0 0 26px rgba(255, 214, 107, 0.24),
     0 0 64px rgba(255, 62, 50, 0.16);
+}
+
+.forecast-overlay.no-copy .forecast-core {
+  min-width: 0;
+  width: min(22vw, 180px);
+  aspect-ratio: 1;
+  padding: 0;
+  border-radius: 999px;
 }
 
 .forecast-kicker {
@@ -1167,60 +1187,59 @@ button:disabled {
   }
 }
 
-@keyframes fallingSuspense {
+@keyframes fallingSuspenseIntro {
   0% {
     opacity: 0;
-    transform: translateX(-50%) translateY(calc(-29% + var(--falling-overlay-shift-y))) scale(0.68) rotate(-6deg);
+    transform: translateX(-50%) translateY(calc(-40% + var(--falling-overlay-shift-y))) scale(0.66) rotate(-6deg);
   }
-  12% {
+  40% {
     opacity: 1;
-    transform: translateX(-50%) translateY(calc(var(--falling-overlay-red-line-y) - 4% + var(--falling-overlay-shift-y))) scale(0.82) rotate(-2deg);
+    transform: translateX(-50%) translateY(calc(var(--falling-overlay-red-line-y) - 3% + var(--falling-overlay-shift-y))) scale(0.8) rotate(-2deg);
   }
-  24% {
+  72% {
     opacity: 1;
-    transform: translateX(-50%) translateY(calc(var(--falling-overlay-red-line-y) + var(--falling-overlay-shift-y))) scale(0.9) rotate(1deg);
-  }
-  36% {
-    opacity: 1;
-    transform: translateX(-50%) translateY(calc(var(--falling-overlay-red-line-y) - 2% + var(--falling-overlay-shift-y))) scale(0.96) rotate(-1deg);
-  }
-  50% {
-    opacity: 0.98;
-    transform: translateX(-50%) translateY(calc(var(--falling-overlay-red-line-y) + var(--falling-overlay-shift-y))) scale(1) rotate(0deg);
-  }
-  62% {
-    opacity: 1;
-    transform: translateX(-50%) translateY(calc(var(--falling-overlay-between-upper-y) + var(--falling-overlay-shift-y))) scale(1.02) rotate(-1.2deg);
-  }
-  74% {
-    opacity: 1;
-    transform: translateX(-50%) translateY(calc(var(--falling-overlay-between-lower-y) + var(--falling-overlay-shift-y))) scale(1.06) rotate(1.1deg);
-  }
-  84% {
-    opacity: 1;
-    transform: translateX(-50%) translateY(calc(var(--falling-overlay-between-upper-y) + 2% + var(--falling-overlay-shift-y))) scale(1.03) rotate(-0.8deg);
-  }
-  92% {
-    opacity: 1;
-    transform: translateX(-50%) translateY(calc(var(--falling-overlay-between-lower-y) - 1% + var(--falling-overlay-shift-y))) scale(1.05) rotate(0.6deg);
+    transform: translateX(-50%) translateY(calc(var(--falling-overlay-red-line-y) + var(--falling-overlay-shift-y))) scale(0.88) rotate(1deg);
   }
   100% {
     opacity: 0.98;
-    transform: translateX(-50%) translateY(calc(var(--falling-overlay-between-upper-y) + var(--falling-overlay-shift-y))) scale(1.03) rotate(0deg);
+    transform: translateX(-50%) translateY(calc(var(--falling-overlay-between-upper-y) + var(--falling-overlay-shift-y))) scale(0.96) rotate(0deg);
+  }
+}
+
+@keyframes fallingSuspenseLoop {
+  0% {
+    opacity: 0.98;
+    transform: translateX(-50%) translateY(calc(var(--falling-overlay-between-upper-y) + var(--falling-overlay-shift-y))) scale(0.95) rotate(-1.2deg);
+  }
+  28% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(calc(var(--falling-overlay-between-lower-y) + 0.8% + var(--falling-overlay-shift-y))) scale(0.99) rotate(1deg);
+  }
+  52% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(calc(var(--falling-overlay-between-upper-y) + 0.8% + var(--falling-overlay-shift-y))) scale(0.97) rotate(-0.9deg);
+  }
+  76% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(calc(var(--falling-overlay-between-lower-y) - 0.8% + var(--falling-overlay-shift-y))) scale(0.995) rotate(0.8deg);
+  }
+  100% {
+    opacity: 0.98;
+    transform: translateX(-50%) translateY(calc(var(--falling-overlay-between-upper-y) + var(--falling-overlay-shift-y))) scale(0.95) rotate(-1deg);
   }
 }
 
 @keyframes fallingCrash {
   0% {
     opacity: 0.6;
-    transform: translateX(-50%) translateY(calc(var(--falling-overlay-between-upper-y) + var(--falling-overlay-shift-y))) scale(1.02) rotate(0deg);
+    transform: translateX(-50%) translateY(calc(var(--falling-overlay-between-lower-y) + var(--falling-overlay-shift-y))) scale(1) rotate(0deg);
     filter:
       drop-shadow(0 0 22px rgba(255, 214, 107, 0.28))
       drop-shadow(0 0 48px rgba(255, 62, 50, 0.18));
   }
   52% {
     opacity: 1;
-    transform: translateX(-50%) translateY(calc(13% + var(--falling-overlay-shift-y))) scale(1.1) rotate(2deg);
+    transform: translateX(-50%) translateY(calc(6% + var(--falling-overlay-shift-y))) scale(1.08) rotate(2deg);
     filter:
       drop-shadow(0 0 34px rgba(255, 214, 107, 0.52))
       drop-shadow(0 0 74px rgba(255, 62, 50, 0.3));
@@ -1231,6 +1250,23 @@ button:disabled {
     filter:
       drop-shadow(0 0 42px rgba(255, 214, 107, 0.7))
       drop-shadow(0 0 108px rgba(255, 62, 50, 0.38));
+  }
+}
+
+@keyframes fallingOverlayFadeOut {
+  0% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(calc(var(--falling-overlay-purple-line-y) + var(--falling-overlay-shift-y))) scale(1.16) rotate(-1deg);
+    filter:
+      drop-shadow(0 0 42px rgba(255, 214, 107, 0.7))
+      drop-shadow(0 0 108px rgba(255, 62, 50, 0.38));
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(calc(var(--falling-overlay-purple-line-y) + var(--falling-overlay-shift-y) + 2%)) scale(1.08) rotate(-1deg);
+    filter:
+      drop-shadow(0 0 18px rgba(255, 214, 107, 0.18))
+      drop-shadow(0 0 36px rgba(255, 62, 50, 0.14));
   }
 }
 
@@ -1719,10 +1755,10 @@ button:disabled {
   }
 
   .machine-viewport {
-    left: 23%;
-    top: 9.8%;
-    width: 54%;
-    height: 76%;
+    left: 23.6%;
+    top: 10.2%;
+    width: 53%;
+    height: 75%;
   }
 
   .reel-board {

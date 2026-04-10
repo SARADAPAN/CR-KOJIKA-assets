@@ -95,13 +95,15 @@ const REEL_REACH_SOUND_DELAY_MS = 2200;
 const REEL_REACH_EXTRA_STOP_MS = 1000;
 const FALLING_TRIGGER_RATE = 0.1;
 const FALLING_SUCCESS_RATE = 0.5;
-const BALL_LAUNCH_INTERVAL_MS = 220;
+const BALL_LAUNCH_INTERVAL_MS = 650;
 const BALL_START_POSITION = { x: 0.165, y: 0.79 };
-const BALL_WALL_CONTROL_POSITION = { x: 0.19, y: 0.28 };
-const BALL_TOP_CONTROL_POSITION = { x: 0.34, y: 0.08 };
-const BALL_APEX_POSITION = { x: 0.56, y: 0.12 };
-const BALL_LAUNCH_DURATION_MS = 1550;
-const BALL_INITIAL_FALL_VELOCITY = { x: 0.015, y: 0.06 };
+const BALL_WALL_CONTROL_POSITION = { x: 0.19, y: 0.3 };
+const BALL_TOP_CONTROL_POSITION = { x: 0.31, y: 0.1 };
+const BALL_LAUNCH_DURATION_MS = 1150;
+const BALL_LAUNCH_DURATION_VARIANCE_MS = 180;
+const BALL_RELEASE_X_RANGE = { min: 0.43, max: 0.58 };
+const BALL_RELEASE_Y_RANGE = { min: 0.16, max: 0.24 };
+const BALL_INITIAL_FALL_VELOCITY = { x: 0.01, y: 0.085 };
 const BALL_GRAVITY = 1.3;
 const BALL_RADIUS = 0.009;
 const BALL_NAIL_COLLISION_Y_RANGE = 0.035;
@@ -185,6 +187,7 @@ const debugRushBtn = document.getElementById("debugRushBtn");
 const debugForecastBtn = document.getElementById("debugForecastBtn");
 const debugFallingBtn = document.getElementById("debugFallingBtn");
 const debugEvenFlowBtn = document.getElementById("debugEvenFlowBtn");
+const debugEvenFlowMissBtn = document.getElementById("debugEvenFlowMissBtn");
 const debugSparkleBtn = document.getElementById("debugSparkleBtn");
 const resetBtn = document.getElementById("resetBtn");
 const enableAudioBtn = document.getElementById("enableAudioBtn");
@@ -331,6 +334,29 @@ function getPachinkoWalls(y) {
   };
 }
 
+function lerp(start, end, progress) {
+  return start + ((end - start) * progress);
+}
+
+function cubicBezierPoint(start, control1, control2, end, t) {
+  const inverse = 1 - t;
+  return (
+    (inverse * inverse * inverse * start) +
+    (3 * inverse * inverse * t * control1) +
+    (3 * inverse * t * t * control2) +
+    (t * t * t * end)
+  );
+}
+
+function cubicBezierDerivative(start, control1, control2, end, t) {
+  const inverse = 1 - t;
+  return (
+    (3 * inverse * inverse * (control1 - start)) +
+    (6 * inverse * t * (control2 - control1)) +
+    (3 * t * t * (end - control2))
+  );
+}
+
 function constrainBallInsideWalls(ball) {
   const walls = getPachinkoWalls(ball.y);
   const minX = walls.left + BALL_RADIUS;
@@ -409,6 +435,10 @@ function spawnPachinkoBall() {
   ballElement.className = "pachinko-ball";
   pachinkoBalls.appendChild(ballElement);
 
+  const drift = (Math.random() - 0.5) * 0.03;
+  const releaseX = lerp(BALL_RELEASE_X_RANGE.min, BALL_RELEASE_X_RANGE.max, Math.random());
+  const releaseY = lerp(BALL_RELEASE_Y_RANGE.min, BALL_RELEASE_Y_RANGE.max, Math.random());
+  const launchDuration = BALL_LAUNCH_DURATION_MS + ((Math.random() - 0.5) * BALL_LAUNCH_DURATION_VARIANCE_MS);
   const ball = {
     x: BALL_START_POSITION.x,
     y: BALL_START_POSITION.y,
@@ -416,7 +446,20 @@ function spawnPachinkoBall() {
     vy: 0,
     phase: "launch",
     launchedAt: performance.now(),
-    drift: (Math.random() - 0.5) * 0.03,
+    drift,
+    launchDuration,
+    launchControl1: {
+      x: BALL_WALL_CONTROL_POSITION.x + (drift * 0.2),
+      y: BALL_WALL_CONTROL_POSITION.y + ((Math.random() - 0.5) * 0.03),
+    },
+    launchControl2: {
+      x: BALL_TOP_CONTROL_POSITION.x + (drift * 1.8),
+      y: BALL_TOP_CONTROL_POSITION.y + ((Math.random() - 0.5) * 0.03),
+    },
+    launchEnd: {
+      x: releaseX,
+      y: releaseY,
+    },
     enteredGate: false,
     element: ballElement,
   };
@@ -463,24 +506,41 @@ function tickPachinkoField(now) {
 
   pachinkoBallsState.slice().forEach((ball) => {
     if (ball.phase === "launch") {
-      const progress = Math.min(1, (now - ball.launchedAt) / BALL_LAUNCH_DURATION_MS);
+      const progress = Math.min(1, (now - ball.launchedAt) / ball.launchDuration);
       const eased = 1 - Math.pow(1 - progress, 3);
-      const inverse = 1 - eased;
-      ball.x =
-        (inverse * inverse * inverse * BALL_START_POSITION.x) +
-        (3 * inverse * inverse * eased * BALL_WALL_CONTROL_POSITION.x) +
-        (3 * inverse * eased * eased * BALL_TOP_CONTROL_POSITION.x) +
-        (eased * eased * eased * BALL_APEX_POSITION.x);
-      ball.y =
-        (inverse * inverse * inverse * BALL_START_POSITION.y) +
-        (3 * inverse * inverse * eased * BALL_WALL_CONTROL_POSITION.y) +
-        (3 * inverse * eased * eased * BALL_TOP_CONTROL_POSITION.y) +
-        (eased * eased * eased * BALL_APEX_POSITION.y);
+      ball.x = cubicBezierPoint(
+        BALL_START_POSITION.x,
+        ball.launchControl1.x,
+        ball.launchControl2.x,
+        ball.launchEnd.x,
+        eased,
+      );
+      ball.y = cubicBezierPoint(
+        BALL_START_POSITION.y,
+        ball.launchControl1.y,
+        ball.launchControl2.y,
+        ball.launchEnd.y,
+        eased,
+      );
 
       if (progress >= 1) {
+        const tangentX = cubicBezierDerivative(
+          BALL_START_POSITION.x,
+          ball.launchControl1.x,
+          ball.launchControl2.x,
+          ball.launchEnd.x,
+          1,
+        );
+        const tangentY = cubicBezierDerivative(
+          BALL_START_POSITION.y,
+          ball.launchControl1.y,
+          ball.launchControl2.y,
+          ball.launchEnd.y,
+          1,
+        );
         ball.phase = "fall";
-        ball.vx = BALL_INITIAL_FALL_VELOCITY.x + (ball.drift * 1.8);
-        ball.vy = BALL_INITIAL_FALL_VELOCITY.y;
+        ball.vx = (tangentX * 0.22) + BALL_INITIAL_FALL_VELOCITY.x + (ball.drift * 1.2);
+        ball.vy = Math.max(BALL_INITIAL_FALL_VELOCITY.y, Math.abs(tangentY) * 0.16);
       }
       updateBallElement(ball);
       return;
@@ -791,6 +851,10 @@ function spawnFallingItems(options = {}) {
 }
 
 function getForecastConfig(outcome) {
+  if (state.phase === "falling_rush") {
+    return null;
+  }
+
   if (["freeze_trigger", "rush_entry"].includes(outcome.kind)) {
     return {
       tier: "strong",
@@ -816,10 +880,11 @@ function getForecastConfig(outcome) {
   }
 
   if (["even_hit", "chance_entry", "rush_odd_hit", "rush_even_hit", "fever_even_hit"].includes(outcome.kind)) {
+    const isChanceEntry = outcome.kind === "chance_entry";
     return {
       tier: "medium",
-      label: "CHANCE",
-      subtext: outcome.kind === "chance_entry" ? "チャンスタイム突入" : "ざわつく予兆",
+      label: isChanceEntry ? "CHANCE" : "",
+      subtext: isChanceEntry ? "チャンスタイム突入" : "",
       tone: "gold",
       count: 12,
       durationMs: 860,
@@ -830,8 +895,8 @@ function getForecastConfig(outcome) {
   if (state.phase === "normal" && Math.random() < 0.12) {
     return {
       tier: "weak",
-      label: "NOTICE",
-      subtext: "ざわざわ...",
+      label: "",
+      subtext: "",
       tone: "cyan",
       count: 8,
       durationMs: 620,
@@ -851,7 +916,7 @@ async function playForecastSequence(outcome) {
   resetForecastOverlay();
   forecastText.textContent = config.label;
   forecastSubtext.textContent = config.subtext;
-  forecastOverlay.className = `forecast-overlay active ${config.tier}`;
+  forecastOverlay.className = `forecast-overlay active ${config.tier}${config.label || config.subtext ? "" : " no-copy"}`;
   triggerMachineSparkle(config.tier === "weak" ? "mild" : config.tier, config.sparkleMs);
   spawnFallingItems({
     count: config.count,
@@ -875,30 +940,33 @@ async function playFallingChanceSequence(options = {}) {
   const { forceSuccess = false } = options;
   pauseAudio(audioLibrary.seFallingTrigger);
   pauseAudio(audioLibrary.seFallingPush);
+  stopJackpotBgm();
+  stopModeBgm();
+  setFallingCompactDisplayActive(false);
   resetFallingImageOverlay();
   clearFallingItems();
-  reelBoard.classList.add("falling-sync");
-  reelBoard.classList.remove("falling-clash");
+  reelBoard.classList.add("suppressed");
+  resetFxVideoOverlay();
+  fxVideoOverlay.src = videoPools.fallingSuccessFx;
+  fxVideoOverlay.muted = !state.audioEnabled;
+  fxVideoOverlay.classList.add("active");
+  fxVideoOverlay.currentTime = 0;
+  fxVideoOverlay.play().catch(() => {});
+  await waitForVideoPlayback(fxVideoOverlay, 4000);
+  resetFxVideoOverlay();
+  safePlay(audioLibrary.seFallingTrigger);
+  setAnnouncement("KOJIKA落ち物演出発生... 落ち物が出現しています。");
+  addHistory("KOJIKA落ち物演出発生 / 期待演出");
   fallingImageOverlay.className = "falling-image-overlay active suspense";
-  triggerMachineSparkle("medium", 11000);
+  triggerMachineSparkle("medium", 8400);
   spawnFallingItems({
     count: 14,
     tone: "gold",
-    durationMs: 11000,
+    durationMs: 8400,
     minSize: 12,
     maxSize: 26,
   });
-  safePlay(audioLibrary.seFallingTrigger);
-  setAnnouncement("KOJIKA落ち物演出発生... 落ち物が数字を押し込み始めています。");
-  addHistory("KOJIKA落ち物演出発生 / 期待演出");
-
-  for (let index = 0; index < 10; index += 1) {
-    reelBoard.classList.remove("falling-clash");
-    void reelBoard.offsetWidth;
-    reelBoard.classList.add("falling-clash");
-    safePlay(audioLibrary.seFallingPush);
-    await wait(1000);
-  }
+  await wait(6800);
 
   const success = forceSuccess || (Math.random() < FALLING_SUCCESS_RATE);
 
@@ -906,13 +974,14 @@ async function playFallingChanceSequence(options = {}) {
     pauseAudio(audioLibrary.seFallingTrigger);
     pauseAudio(audioLibrary.seFallingPush);
     resetFallingClashState();
+    reelBoard.classList.remove("suppressed");
+    syncCurrentAudioState();
     setAnnouncement("KOJIKA落ち物演出失敗... 惜しくも落ちきりませんでした。");
     addHistory("KOJIKA落ち物演出失敗 / 通常復帰");
     return false;
   }
 
   pauseAudio(audioLibrary.seFallingPush);
-  reelBoard.classList.remove("falling-clash");
   fallingImageOverlay.className = "falling-image-overlay active success";
   spawnFallingItems({
     count: 26,
@@ -922,16 +991,14 @@ async function playFallingChanceSequence(options = {}) {
     maxSize: 30,
   });
   triggerMachineSparkle("strong", 3200);
-  fxVideoOverlay.src = videoPools.fallingSuccessFx;
-  fxVideoOverlay.classList.add("active");
-  fxVideoOverlay.currentTime = 0;
-  fxVideoOverlay.play().catch(() => {});
   await wait(1200);
-  reelBoard.classList.add("falling-resolved");
   fallingImageOverlay.className = "falling-image-overlay active success-hold";
-  await wait(3000);
-  resetFallingClashState();
-  resetFxVideoOverlay();
+  await wait(260);
+  setFallingCompactDisplayActive(true);
+  await wait(4000);
+  fallingImageOverlay.className = "falling-image-overlay active success-fade";
+  await wait(550);
+  resetFallingImageOverlay();
   pauseAudio(audioLibrary.seFallingTrigger);
   return true;
 }
@@ -951,7 +1018,6 @@ async function playFallingBonusSequence() {
   await wait(260);
   setFallingCompactDisplayActive(true);
   await wait(3940);
-  pauseAudio(audioLibrary.bgmFallingBonus);
 }
 
 async function runHendoChanceUpgrade() {
@@ -1069,6 +1135,7 @@ function resetFxVideoOverlay() {
   fxVideoOverlay.classList.remove("active");
   fxVideoOverlay.pause();
   fxVideoOverlay.currentTime = 0;
+  fxVideoOverlay.muted = true;
   fxVideoOverlay.removeAttribute("src");
   fxVideoOverlay.load();
 }
@@ -1099,6 +1166,47 @@ async function getAudioDurationMs(audio, fallbackMs) {
     const onLoaded = () => finish((Number.isFinite(audio.duration) && audio.duration > 0) ? audio.duration * 1000 : fallbackMs);
     audio.addEventListener("loadedmetadata", onLoaded, { once: true });
     window.setTimeout(() => finish(fallbackMs), 1000);
+  });
+}
+
+async function waitForVideoPlayback(video, fallbackMs) {
+  return new Promise((resolve) => {
+    let settled = false;
+    let timeoutId = null;
+    const finish = () => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+      video.removeEventListener("ended", onEnded);
+      video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      resolve();
+    };
+    const onEnded = () => finish();
+    const armTimeout = (durationMs) => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+      timeoutId = window.setTimeout(finish, durationMs);
+    };
+    const onLoadedMetadata = () => {
+      const durationMs = (Number.isFinite(video.duration) && video.duration > 0)
+        ? Math.ceil(video.duration * 1000) + 250
+        : fallbackMs;
+      armTimeout(durationMs);
+    };
+
+    video.addEventListener("ended", onEnded, { once: true });
+    video.addEventListener("loadedmetadata", onLoadedMetadata, { once: true });
+
+    if (Number.isFinite(video.duration) && video.duration > 0) {
+      armTimeout(Math.ceil(video.duration * 1000) + 250);
+    } else {
+      armTimeout(fallbackMs);
+    }
   });
 }
 
@@ -1306,7 +1414,7 @@ function triggerDebugFalling() {
   addHistory("デバッグで落ち物演出を再生");
 }
 
-async function triggerDebugEvenFlow() {
+async function triggerDebugEvenFlow(forceSuccess = true) {
   if (state.spinning) {
     return;
   }
@@ -1319,12 +1427,12 @@ async function triggerDebugEvenFlow() {
   setMode("hit");
   syncPhaseDisplay();
   safePlay(audioLibrary.seHit);
-  setAnnouncement("デバッグ: 偶数当たりから落ち物分岐の流れを再生します。");
-  addHistory("デバッグで偶数当たり分岐を再生");
+  setAnnouncement(`デバッグ: 偶数当たりから落ち物分岐${forceSuccess ? "当たり" : "はずれ"}の流れを再生します。`);
+  addHistory(`デバッグで偶数当たり分岐${forceSuccess ? "当たり" : "はずれ"}を再生`);
   triggerHitVisual("medium");
   await playHitPause(audioLibrary.bgmNormalHit);
 
-  const fallingSuccess = await playFallingChanceSequence({ forceSuccess: true });
+  const fallingSuccess = await playFallingChanceSequence({ forceSuccess });
   if (fallingSuccess) {
     await playFallingBonusSequence();
     state.phase = "falling_rush";
@@ -1438,6 +1546,7 @@ function setBusy(isBusy) {
   debugForecastBtn.disabled = isBusy;
   debugFallingBtn.disabled = isBusy;
   debugEvenFlowBtn.disabled = isBusy;
+  debugEvenFlowMissBtn.disabled = isBusy;
   debugSparkleBtn.disabled = isBusy;
   resetBtn.disabled = isBusy;
   enableAudioBtn.disabled = isBusy;
@@ -1651,6 +1760,9 @@ function spinByPhase() {
   if (state.phase === "musou_rush") {
     return rollMusouRushPhase();
   }
+  if (state.phase === "falling_rush") {
+    return rollMusouRushPhase();
+  }
   if (state.phase === "freeze_rush") {
     return rollMusouRushPhase();
   }
@@ -1825,6 +1937,7 @@ async function runSpin(options = {}) {
     triggerHitVisual("strong");
     await playHitPause(audioLibrary.bgmJackpotHit);
   } else if (outcome.kind === "even_hit") {
+    const willTriggerFalling = Math.random() < FALLING_TRIGGER_RATE;
     state.chain = 0;
     state.totalHits += 1;
     state.consecutiveMisses = 0;
@@ -1836,14 +1949,20 @@ async function runSpin(options = {}) {
     stopModeBgm();
     renderCounters();
     safePlay(audioLibrary.seHit);
-    setMode("hit");
     syncPhaseDisplay();
-    setAnnouncement(`偶数図柄 ${describeResult(outcome.result)} 揃いで通常当たり。通常状態へ戻ります。`);
-    addHistory(`通常当たり ${describeResult(outcome.result)} / +500玉`);
-    triggerHitVisual("medium");
-    await playHitPause(audioLibrary.bgmNormalHit);
+    if (willTriggerFalling) {
+      setAnnouncement(`偶数図柄 ${describeResult(outcome.result)} 揃いから落ち物演出へ発展。`);
+      addHistory(`通常当たり ${describeResult(outcome.result)} / 落ち物演出発展`);
+      triggerHitVisual("medium");
+    } else {
+      setMode("hit");
+      setAnnouncement(`偶数図柄 ${describeResult(outcome.result)} 揃いで通常当たり。通常状態へ戻ります。`);
+      addHistory(`通常当たり ${describeResult(outcome.result)} / +500玉`);
+      triggerHitVisual("medium");
+      await playHitPause(audioLibrary.bgmNormalHit);
+    }
 
-    if (Math.random() < FALLING_TRIGGER_RATE) {
+    if (willTriggerFalling) {
       const fallingSuccess = await playFallingChanceSequence();
       if (fallingSuccess) {
         await playFallingBonusSequence();
@@ -2198,7 +2317,11 @@ debugFallingBtn.addEventListener("click", () => {
 });
 
 debugEvenFlowBtn.addEventListener("click", () => {
-  triggerDebugEvenFlow();
+  triggerDebugEvenFlow(true);
+});
+
+debugEvenFlowMissBtn.addEventListener("click", () => {
+  triggerDebugEvenFlow(false);
 });
 
 debugSparkleBtn.addEventListener("click", () => {
